@@ -1,0 +1,178 @@
+{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1033{\fonttbl{\f0\fnil Courier New;}{\f1\fnil\fcharset0 Calibri;}}
+{\colortbl ;\red0\green128\blue0;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue128;\red0\green0\blue255;\red128\green0\blue128;\red0\green128\blue128;}
+{\*\generator Riched20 10.0.19041}\viewkind4\uc1 
+\pard\cf1\highlight2\f0\fs20\lang9 *STEP ONE-REMOVE ANY IDENTICAL DUPLICATE TIME STAMPS;\cf3\par
+\cf4\b PROC\cf3\b0  \cf4\b SORT\cf3\b0  \cf5 DATA\cf3  = remsa \cf5 OUT\cf3  = Rformnodup \cf5 NODUPKEY\cf3  \cf5 DUPOUT\cf3 = DUPLICATETIMESTAMPS;\par
+\cf5 BY\cf3  Master_Incident_Number Time_PhonePickUp Time_CallEnteredQueue  Time_Assigned ClockStartTime Time_Enroute Time_First_Unit_Arrived Time_ArrivedAtScene Time_Staged Time_Depart_Scene Time_Arrive_Destination Time_ClearedThisDest Transport_Mode;\par
+\cf4\b RUN\cf3\b0 ;\par
+\cf4\b PROC\cf3\b0  \cf4\b EXPORT\cf3\b0  \cf5 DATA\cf3 = WORK.DUPLICATETIMESTAMPS\par
+            \cf5 OUTFILE\cf3 = \cf6 "X:\\EMS PROGRAM\\EMS Oversight Program\\Data Documents\\Data Reports\\FY 21-22\\Q3\\2_Dups\\REMSA_DUP.02.22_round 1.txt"\cf3  \par
+             \cf5 DBMS\cf3 =TAB \cf5 REPLACE\cf3 ;\par
+     PUTNAMES=YES;\par
+\cf4\b RUN\cf3\b0 ;\par
+\cf1 *STEP TWO-FLATTEN ALL DUPLICATE INCIDENT NUMBER TIME STAMPS INTO ONE ROW;\cf3\par
+\cf4\b proc\cf3\b0  \cf4\b transpose\cf3\b0  \cf5 data\cf3 =Rformnodup \cf5 out\cf3 =testn \cf5 prefix\cf3  = TIMES;                                                                                       \par
+  \cf5 by\cf3  Master_Incident_Number;                                                     \par
+  \cf5 var\cf3  Time_Assigned Time_Enroute Time_First_Unit_Arrived Time_ArrivedAtScene Time_Staged Time_Depart_Scene Time_Arrive_Destination Time_ClearedThisDest; \par
+\cf4\b run\cf3\b0 ;\par
+\cf1 *STEP TWO AND A HALF - RUN THE PROC PRINT;\cf3\par
+\cf4\b proc\cf3\b0  \cf4\b print\cf3\b0  \cf5 data\cf3  = testn (\cf5 obs\cf3  = \cf7\b 4000\cf3\b0 ); \cf5 format\cf3  times1-times32 \cf7 datetime.\cf3 ; \cf4\b run\cf3\b0 ;\par
+\cf1 *STEP THREE-*CHANGE THE TIME INTERVAL TO ACCOUNT FOR NUMBER OF TIME STAMPS;\cf3\par
+\cf1 *PULL THE LOWEST VALUE OUT FOR EACH ROW-except for completed time, pull the max;\cf3\par
+\cf1 *MIN and MAX functions skip missing values;\cf3\par
+\cf4\b DATA\cf3\b0  NEW2;\par
+\cf5 SET\cf3  TESTN; \par
+\cf5 format\cf3  IN \cf7 datetime.\cf3 ;\par
+\cf5 IF\cf3  _NAME_ = \cf6 'Time_Assigned'\cf3  \cf5 then\cf3  \cf5 do\cf3 ;\par
+IN = MIN (OF TIMES1-TIMES6);\par
+\cf5 end\cf3 ;\par
+\cf5 IF\cf3  _NAME_ = \cf6 'Time_Enroute'\cf3  \cf5 then\cf3  \cf5 do\cf3 ;\par
+IN = MIN (OF TIMES1-TIMES6);\par
+\cf5 end\cf3 ;\par
+\cf5 IF\cf3  _NAME_ = \cf6 'Time_First_Unit_Arrived'\cf3  \cf5 then\cf3  \cf5 do\cf3 ;\par
+IN = MIN (OF TIMES1-TIMES6);\par
+\cf5 end\cf3 ;\par
+\cf5 IF\cf3  _NAME_ = \cf6 'Time_ArrivedAtScene'\cf3  \cf5 then\cf3  \cf5 do\cf3 ;\par
+IN = MIN (OF TIMES1-TIMES6);\par
+\cf5 end\cf3 ;\par
+\cf5 IF\cf3  _NAME_ = \cf6 'Time_Staged'\cf3  \cf5 then\cf3  \cf5 do\cf3 ;\par
+IN = MIN (OF TIMES1-TIMES6);\par
+\cf5 end\cf3 ;\par
+\cf5 IF\cf3  _NAME_ = \cf6 'Time_Depart_Scene'\cf3  \cf5 then\cf3  \cf5 do\cf3 ;\par
+IN = MIN (OF TIMES1-TIMES6);\par
+\cf5 end\cf3 ;\par
+\cf5 IF\cf3  _NAME_ = \cf6 'Time_Arrive_Destination'\cf3  \cf5 then\cf3  \cf5 do\cf3 ;\par
+IN = MIN (OF TIMES1-TIMES6);\par
+\cf5 end\cf3 ;\par
+\cf5 IF\cf3  _NAME_ = \cf6 'Time_ClearedThisDest'\cf3  \cf5 then\cf3  \cf5 do\cf3 ;\par
+IN = MAX (OF TIMES1-TIMES6);\par
+\cf5 end\cf3 ;\par
+\cf4\b run\cf3\b0 ;\par
+\cf4\b proc\cf3\b0  \cf4\b print\cf3\b0  \cf5 data\cf3  = new2 (\cf5 obs\cf3  = \cf7\b 3000\cf3\b0 ); \cf4\b run\cf3\b0 ;\par
+\cf1 *STEP FOUR-sort data to re-transpose the calls;\cf3\par
+\cf4\b proc\cf3\b0  \cf4\b sort\cf3\b0  \cf5 data\cf3  = new2 \cf5 out\cf3  = new3;\par
+  \cf5 by\cf3  Master_Incident_Number;\par
+\cf4\b run\cf3\b0 ;\par
+\cf1 *STEP FIVE: RETRANSPOSE WITHOUT SORTING BY IN, SO THAT THE TIME1(assigned)-TIME6(cleared) ARE ACCURATE;\cf3\par
+\cf4\b proc\cf3\b0  \cf4\b transpose\cf3\b0  \cf5 data\cf3 =new3 \cf5 out\cf3 =fix \cf5 prefix\cf3  = TIME;                                                                                       \par
+  \cf5 by\cf3  Master_Incident_Number ;                                                     \par
+  \cf5 var\cf3  IN; \par
+\cf4\b run\cf3\b0 ;\par
+\cf1 *STEP SIX: SORT THE MASTER BY INCIDENT NUMBER TO DO THE MERGE;\cf3\par
+\cf4\b PROC\cf3\b0  \cf4\b SORT\cf3\b0  \cf5 DATA\cf3  = Rformnodup \cf5 OUT\cf3  = Rformnodup;\par
+\cf5 BY\cf3  Master_Incident_Number \cf5 descending\cf3  Location_name;\par
+\cf4\b RUN\cf3\b0 ;\par
+\par
+\cf1 *STEP SEVEN: merge the incident level time stamps to each call in the master dataset;\cf3\par
+\cf4\b DATA\cf3\b0  INTS;\par
+\cf5 MERGE\cf3  Rformnodup (\cf5 IN\cf3  = A) FIX (\cf5 IN\cf3  = B);\par
+\cf5 BY\cf3  Master_Incident_Number;\par
+\cf4\b RUN\cf3\b0 ;\par
+\cf4\b proc\cf3\b0  \cf4\b print\cf3\b0  \cf5 data\cf3  = ints (\cf5 obs\cf3  = \cf7\b 3000\cf3\b0 ); \cf4\b run\cf3\b0 ;\par
+\cf1 *STEP EIGHT:renames the times as the incident level time stamps;\cf3\par
+\cf4\b DATA\cf3\b0  TIMES;\par
+\cf5 SET\cf3  INTS;\par
+\cf5 format\cf3  INassigned INenroute INFIRSTau INarrive INstaged INdepart INhosp INcleared \cf7 datetime.\cf3 ;\par
+INassigned =TIME1;\par
+INenroute = TIME2;\par
+INFIRSTau = TIME3;\par
+INarrive = TIME4;\par
+INstaged = TIME5; \par
+INdepart = TIME6;\par
+INhosp = TIME7;\par
+INcleared = TIME8;\par
+\cf5 drop\cf3  _NAME_ TIME1-TIME8;\par
+\cf4\b run\cf3\b0 ;\par
+\cf1 *CHECK TO MAKE SURE CODE WORKED;\cf3\par
+\cf4\b proc\cf3\b0  \cf4\b print\cf3\b0  \cf5 data\cf3  = times (\cf5 obs\cf3  = \cf7\b 3000\cf3\b0 );\par
+\cf4\b run\cf3\b0 ;\par
+\cf1 *EXPORTS ALL CALLS FOR RECORDS;\cf3\par
+\cf4\b PROC\cf3\b0  \cf4\b EXPORT\cf3\b0  \cf5 DATA\cf3 = WORK.times\par
+            \cf5 OUTFILE\cf3 = \cf6 "X:\\EMS PROGRAM\\EMS Oversight Program\\Data Documents\\Data Reports\\FY 21-22\\Q3\\3_All Calls\\REMSA_ALL CALLS 02.22.txt"\cf3  \par
+             \cf5 DBMS\cf3 =TAB \cf5 REPLACE\cf3 ;\par
+     PUTNAMES=YES;\par
+\cf4\b RUN\cf3\b0 ;\par
+\cf1 *STEP EIGHT POINT FIVE: KEEPS THE UNIT ARRIVING AT DESTINATION;\cf3\par
+\cf4\b proc\cf3\b0  \cf4\b sort\cf3\b0  \cf5 data\cf3  = times \cf5 out\cf3  = times;\par
+\cf5 by\cf3  Master_Incident_Number \cf5 descending\cf3  Location_name;\par
+\cf4\b run\cf3\b0 ;\par
+\cf1 *STEP NINE: FULLY DEDUPLICATE THE INCIDENTS;\cf3\par
+\cf4\b PROC\cf3\b0  \cf4\b SORT\cf3\b0  \cf5 DATA\cf3  = TIMES \cf5 OUT\cf3  = FINAL \cf5 NODUPKEY\cf3  \cf5 DUPOUT\cf3  = REMOVED;\par
+\cf5 BY\cf3  Master_Incident_Number  ;\par
+\cf4\b RUN\cf3\b0 ;\par
+\cf4\b proc\cf3\b0  \cf4\b print\cf3\b0  \cf5 data\cf3  = final; \cf4\b run\cf3\b0 ;\par
+\cf1 *STEP TEN: EXPORT THE DUPLICATES FOR RECORDS;\cf3\par
+\cf4\b PROC\cf3\b0  \cf4\b EXPORT\cf3\b0  \cf5 DATA\cf3 = WORK.REMOVED\par
+            \cf5 OUTFILE\cf3 = \cf6 "X:\\EMS PROGRAM\\EMS Oversight Program\\Data Documents\\Data Reports\\FY 21-22\\Q3\\2_Dups\\REMSA_DUP.02.22_round 2.txt"\cf3  \par
+             \cf5 DBMS\cf3 =TAB \cf5 REPLACE\cf3 ;\par
+     PUTNAMES=YES;\par
+\cf4\b RUN\cf3\b0 ;\par
+\cf1 *STEP ELEVEN: CLEAN ADDRESSES FOR MATCH FILE;\cf3\par
+\cf4\b data\cf3\b0  Rform;\par
+\cf5 set\cf3  final;\par
+\cf5 format\cf3  long lat \cf7\b 11.6\cf3\b0   Dphone_PU \cf7 mmddyy10.\cf3  Tphone_PU   hour_start10 \cf7 time.\cf3  INenroute_R \cf7 datetime.\cf3  ;\par
+LONG = ((((-\cf7\b 1\cf3\b0 )*Longitude)/\cf7\b 1000000\cf3\b0 )); \par
+LAT = (((Latitude)/\cf7\b 1000000\cf3\b0 ));\par
+Dphone_PU=datepart(Time_PhonePickUp);\par
+Month = month(Dphone_PU);\par
+City_R = City;\par
+INenroute_R=INenroute;\par
+\cf1 *splits all times to create incident level time stamps;\cf3\par
+Tphone_PU = timepart (Time_PhonePickUp);\par
+hour_start10=ROUND(Tphone_PU, hms(\cf7\b 0\cf3\b0 ,\cf7\b 10\cf3\b0 ,\cf7\b 0\cf3\b0 ));\par
+\cf1 *removes priority from problem;\cf3\par
+Issue = Problem;\par
+Issue=tranwrd(Issue,\cf6 ' P1'\cf3 ,\cf6 ' '\cf3 );\par
+Issue=tranwrd(Issue,\cf6 ' P2'\cf3 , \cf6 ' '\cf3 );\par
+Issue=tranwrd(Issue,\cf6 ' P3'\cf3 , \cf6 ' '\cf3 );\par
+Issue=tranwrd(Issue,\cf6 ' P9'\cf3 , \cf6 ' '\cf3 );\par
+\cf5 drop\cf3   Problem longitude latitude Time_Assigned Time_Enroute Time_First_Unit_Arrived\par
+Time_ArrivedAtScene Time_Staged Time_Depart_Scene \par
+Time_Arrive_Destination Time_ClearedThisDest INenroute City;\par
+\cf4\b run\cf3\b0 ;\par
+\cf1 *COPY AND PASTE THIS OUTPUT INTO THE MASTER TRACKING SHEET FOR REMSA MEDICAL PROBLEMS PER MONTH;\cf3\par
+\cf4\b proc\cf3\b0  \cf4\b freq\cf3\b0  \cf5 data\cf3  = rform;\par
+\cf5 table\cf3  Issue/\cf5 nocum\cf3 ;\cf4\b run\cf3\b0 ;\par
+\cf4\b proc\cf3\b0  \cf4\b print\cf3\b0  \cf5 data\cf3  = rform (\cf5 obs\cf3  = \cf7\b 2000\cf3\b0 ); \cf4\b run\cf3\b0 ;\par
+\cf4\b data\cf3\b0  REMSA1;\par
+\cf5 set\cf3  rform;\par
+\cf1 *cleaning address to replace / with and;\cf3\par
+street_address=address;\par
+street_address=propcase(street_address);\par
+street_address=tranwrd(street_address,\cf6 '/'\cf3 , \cf6 'and'\cf3 );\par
+street_address=tranwrd(street_address,\cf6 'Ramp and '\cf3 , \cf6 ''\cf3 );\par
+street_address=tranwrd(street_address,\cf6 '0 Ramp'\cf3 , \cf6 'HWY'\cf3 );\par
+\par
+street_address=tranwrd(street_address,\cf6 ' Wy'\cf3 , \cf6 ' Way'\cf3 );\par
+street_address=tranwrd(street_address,\cf6 ' Loop'\cf3 , \cf6 ' Lp'\cf3 );\par
+street_address=tranwrd(street_address,\cf6 ' Lp Rd'\cf3 , \cf6 ' Loop Rd'\cf3 );\par
+street_address=tranwrd(street_address,\cf6 ' Mt '\cf3 , \cf6 ' Mount '\cf3 );\par
+street_address=tranwrd(street_address,\cf6 ' Bl Blvd'\cf3 , \cf6 ' Blvd'\cf3 );\par
+street_address=tranwrd(street_address,\cf6 ' Lane'\cf3 , \cf6 ' Ln'\cf3 );\par
+street_address=tranwrd(street_address,\cf6 ' Av'\cf3 , \cf6 ' Ave'\cf3 );\par
+street_address=tranwrd(street_address,\cf6 ' Avee'\cf3 , \cf6 ' Ave'\cf3 );\par
+\par
+street_address=tranwrd(street_address,\cf6 ' Pw'\cf3 , \cf6 ' Pkwy'\cf3 );\par
+street_address=tranwrd(street_address,\cf6 ' Pky'\cf3 , \cf6 ' Pkwy'\cf3 );\par
+street_address=tranwrd(street_address,\cf6 ' Bl '\cf3 , \cf6 ' Blvd '\cf3 );\par
+street_address=tranwrd(street_address,\cf6 ' Te '\cf3 , \cf6 ' Ter '\cf3 );\par
+street_address=tranwrd(street_address,\cf6 ' Rw'\cf3 , \cf6 ' Row'\cf3 );\par
+street_address=tranwrd(street_address,\cf6 ' Ci'\cf3 , \cf6 ' Cir'\cf3 );\par
+street_address=tranwrd(street_address,\cf6 ' Cirr'\cf3 , \cf6 ' Cir'\cf3 );\par
+street_address=tranwrd(street_address,\cf6 'Street'\cf3 , \cf6 'St'\cf3 );\par
+
+\pard\sa200\sl276\slmult1\cf0\highlight0\f1\fs22\par
+
+\pard\cf4\highlight2\b\f0\fs20 proc\cf3\b0  \cf4\b print\cf3\b0  \cf5 data\cf3  = remsa1; \par
+\cf5 var\cf3  address street_address; \par
+\cf4\b run\cf3\b0 ;\par
+\cf4\b PROC\cf3\b0  \cf4\b CONTENTS\cf3\b0  \cf5 DATA\cf3  = remsa1; \cf4\b RUN\cf3\b0 ;\par
+\cf1 *EXPORT FINAL FILE FOR MANUAL CLEAN AND MATCHING TO REMSA FILES;\cf3\par
+\cf4\b PROC\cf3\b0  \cf4\b EXPORT\cf3\b0  \cf5 DATA\cf3 = WORK.remsa1\par
+            \cf5 OUTFILE\cf3 = \cf6 "X:\\EMS PROGRAM\\EMS Oversight Program\\Data Documents\\Data Reports\\FY 21-22\\Q3\\4_For Match\\REMSA_NODUP 02.22.txt"\cf3  \par
+            \cf5 DBMS\cf3 =TAB \cf5 REPLACE\cf3 ;\par
+     PUTNAMES=YES;\par
+
+\pard\sa200\sl276\slmult1\cf4\b RUN\cf3\b0 ;\cf0\highlight0\f1\fs22\par
+}
+ 
